@@ -5,4 +5,4 @@ export const LEGAL_UPDATED_EN = "20 October 2026";
 export const PUBLISHER = "s0ph";
 // Email per le richieste sulla privacy. Se vuota, si rimanda alla pagina Issues del progetto su GitHub.
 export const CONTACT_EMAIL = "flynnsarcadeproject@gmail.com";
-export const ISSUES_URL = "https://github.com/kevin-flynn89/ReAIding-Companion/issues";
+export const ISSUES_URL = "https://github.com/elsewhere-s0ph/ReAIding-Companion/issues";
