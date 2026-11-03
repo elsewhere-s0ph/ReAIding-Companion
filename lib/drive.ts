@@ -22,8 +22,7 @@ function loadGis(): Promise<void> {
   });
 }
 
-// Carica in anticipo lo script di Google, così la finestra di accesso si apre subito al tocco
-export function preloadGoogle() { loadGis().catch(() => {}); }
+// Lo script di Google si carica solo quando premi la sincronizzazione (mai all'apertura della pagina)
 
 let cached: { token: string; exp: number } | null = null;
 
