@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { listBooks, type BookMeta } from "@/lib/library";
 import { Icon, TopBar } from "../ui";
-import { driveConfigured, getToken, preloadGoogle, signOut } from "@/lib/drive";
+import { driveConfigured, getToken, signOut } from "@/lib/drive";
 import { lastSync, syncAll } from "@/lib/sync";
 import { backupName, importBackup, makeBackup } from "@/lib/backup";
 import { numLocale, t } from "@/lib/i18n";
@@ -19,7 +19,7 @@ export default function Backup() {
   const [last, setLast] = useState<number | null>(null);
   const [drive, setDrive] = useState(false);
 
-  useEffect(() => { setDrive(driveConfigured()); if (driveConfigured()) preloadGoogle(); lastSync().then(setLast); }, []);
+  useEffect(() => { setDrive(driveConfigured()); lastSync().then(setLast); }, []);
 
   async function sincronizza() {
     setSyncing(true); setSyncMsg(null);
