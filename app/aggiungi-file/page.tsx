@@ -28,6 +28,16 @@ export default function AggiungiFile() {
     }
   }
 
+  // Lo Spoiler Shield lavora per capitolo: con pochi capitoli giganti protegge meno
+  function avvisoCapitoli(): string | null {
+    if (!p || p.chapters.length === 0) return null;
+    const sizes = p.chapters.map((c) => (c.text || "").length);
+    const tot = sizes.reduce((a, b) => a + b, 0);
+    if (p.chapters.length === 1) return t("Questo libro risulta di un solo capitolo: lo Spoiler Shield non potrà proteggerti dagli spoiler, perché l'AI vedrebbe tutto il libro. Se puoi, prova con un'altra edizione del file (EPUB) divisa in capitoli.");
+    if (tot > 20000 && Math.max(...sizes) / tot > 0.4) return t("Un capitolo occupa gran parte del libro: lo Spoiler Shield proteggerà meno, perché agisce capitolo per capitolo. Se puoi, prova con un'altra edizione del file.");
+    return null;
+  }
+
   async function salva() {
     if (!p) return;
     await saveWork({ id: crypto.randomUUID(), title: p.title, author: p.author, kind: "libro", cover: p.cover, chapters: p.chapters, current: 1, maxRead: 1, createdAt: Date.now() });
@@ -62,6 +72,7 @@ export default function AggiungiFile() {
           <ul className="mt-4 max-h-44 space-y-1 overflow-auto rounded-xl bg-surface p-3 text-sm">
             {p.chapters.slice(0, 30).map((c) => <li key={c.n} className="truncate"><span className="text-on-surface-variant">{c.n}.</span> {c.title.slice(0, 60)}</li>)}
           </ul>
+          {avvisoCapitoli() && <p role="status" className="banner-error mt-3 text-sm">{avvisoCapitoli()}</p>}
           {p.chapters.length === 0 && <p className="mt-3 text-sm text-error">{t("Nessun testo trovato nel file.")}</p>}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button onClick={salva} disabled={saved || p.chapters.length === 0} className="btn btn-filled flex-1 sm:flex-none">
