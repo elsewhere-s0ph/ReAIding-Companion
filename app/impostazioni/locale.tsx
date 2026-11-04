@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Icon } from "../ui";
-import { LOCAL_MODELS, cleanLegacy, downloadAndTest, isDownloaded, localReadyFor, localSupport, recommendedModel, removeModel, type Support } from "@/lib/localllm";
+import { LOCAL_MODELS, cleanLegacy, downloadAndTest, isDownloaded, localReadyFor, localSupport, recommendedModel, removeModel, localDiag, type Support } from "@/lib/localllm";
 import { t } from "@/lib/i18n";
+import { issueUrl } from "@/lib/legal";
 
 // Sezione "AI sul dispositivo": scelta del modello, download con avanzamento, prova ed eliminazione.
 export default function Locale({ model, onModel }: { model: string; onModel: (id: string) => void }) {
@@ -12,6 +13,7 @@ export default function Locale({ model, onModel }: { model: string; onModel: (id
   const [prog, setProg] = useState<{ p: number; text: string } | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [ready, setReady] = useState(false);
+  const [report, setReport] = useState<string | null>(null);
 
   const refresh = async () => {
     const h: Record<string, boolean> = {};
@@ -36,12 +38,16 @@ export default function Locale({ model, onModel }: { model: string; onModel: (id
 
   async function scarica() {
     const rilascia = await tieniAcceso();
-    setBusy(true); setMsg(null); setProg({ p: 0, text: t("Preparo il download...") });
+    setBusy(true); setMsg(null); setReport(null); setProg({ p: 0, text: t("Preparo il download...") });
     onModel(chosen);
     try {
       const r = await downloadAndTest(chosen, (p, text) => setProg({ p, text }));
       setMsg({ ok: true, text: t("Funziona! Il modello ha risposto: \"{r}\". Ora puoi fare domande dal lettore e dalla chat.", { r: r.slice(0, 60) }) });
-    } catch (e: any) { setMsg({ ok: false, text: e?.message || t("Errore sconosciuto.") }); }
+    } catch (e: any) {
+      const text = e?.message || t("Errore sconosciuto.");
+      setMsg({ ok: false, text });
+      localDiag(chosen).then((d) => setReport(issueUrl(`On-device model problem: ${chosen}`, `${d}\nError: ${text}\n\n(Describe what happened here)`)));
+    }
     rilascia(); setProg(null); setBusy(false); refresh();
   }
   async function elimina() {
@@ -95,6 +101,7 @@ export default function Locale({ model, onModel }: { model: string; onModel: (id
       </div>
       {ready && !msg && <p className="banner">{t("Modello pronto: {name}.", { name: LOCAL_MODELS.find((m) => m.id === model)?.label ?? "" })}</p>}
       {msg && <p role="status" className={msg.ok ? "banner" : "banner-error"}>{msg.text}</p>}
+      {msg && !msg.ok && report && <p className="text-sm"><a href={report} target="_blank" rel="noreferrer" className="font-semibold text-primary underline">{t("Segnala il problema su GitHub")}</a> <span className="text-on-surface-variant">{t("(si apre un testo già compilato con i dati tecnici, che puoi leggere e modificare)")}</span></p>}
       <p className="text-xs text-on-surface-variant">{t("Limiti: la memoria narrativa richiede un'AI esterna (i modelli piccoli non la costruiscono in modo affidabile); durante le risposte il telefono può scaldarsi e consumare batteria. Il modello viene scaricato da huggingface.co e salvato nella memoria del browser.")}</p>
     </section>
   );
