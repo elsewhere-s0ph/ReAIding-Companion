@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { getLang } from "@/lib/i18n";
+import { ISSUES_URL } from "@/lib/legal";
 import { TopBar } from "../ui";
 
 const faqIt: { q: string; a: React.ReactNode }[] = [
@@ -48,6 +49,7 @@ export default function Aiuto() {
         ))}
       </div>
       <p className="mt-6 text-sm"><Link href="/?guida=1" className="font-semibold text-primary underline">{en ? "Review the welcome guide" : "Rivedi la guida di benvenuto"}</Link></p>
+      <p className="mt-3 text-sm"><a href={`${ISSUES_URL}/new`} target="_blank" rel="noreferrer" className="font-semibold text-primary underline">{en ? "Report a problem or suggest an idea (GitHub)" : "Segnala un problema o proponi un'idea (GitHub)"}</a></p>
       <p className="mt-3 text-sm text-on-surface-variant">{en ? "Can't find the answer? Also read " : "Non trovi la risposta? Leggi anche "}<Link href="/privacy" className="font-semibold text-primary underline">Privacy</Link>{en ? " and " : " e "}<Link href="/condizioni" className="font-semibold text-primary underline">{en ? "Terms of use" : "Condizioni d'uso"}</Link>.</p>
     </main>
   );
