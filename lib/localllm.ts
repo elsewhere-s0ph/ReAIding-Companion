@@ -64,6 +64,31 @@ function setReady(model: string | null) {
   if (typeof window !== "undefined") window.dispatchEvent(new Event("rc-ai"));
 }
 
+// Traduce gli errori tecnici in frasi comprensibili, con il consiglio giusto
+export type LocalErrKind = "memory" | "device" | "network" | "storage" | "other";
+export function classifyLocalError(e: any): LocalErrKind {
+  const m = String(e?.message || e);
+  if (/quota|QuotaExceeded|no space|disk full/i.test(m)) return "storage";
+  if (/device.{0,12}lost|DeviceLost|GPUDevice/i.test(m)) return "device";
+  if (/out of memory|OOM|GPUOutOfMemory|allocate|maxBufferSize|exceeds.{0,30}(limit|size)|Invalid array length/i.test(m)) return "memory";
+  if (/Failed to fetch|NetworkError|network|Load failed|ERR_(NETWORK|INTERNET|CONNECTION|TIMED)|fetch.{0,20}fail|timeout/i.test(m) || e instanceof TypeError) return "network";
+  return "other";
+}
+export function explainLocalError(e: any): string {
+  switch (classifyLocalError(e)) {
+    case "memory": return t("Il telefono non ha abbastanza memoria per questo modello. Chiudi le altre app e le altre schede del browser e riprova, oppure scegli un modello più piccolo.");
+    case "device": return t("La scheda grafica si è bloccata (di solito per poca memoria o perché lo schermo si è spento). Riprova; se succede ancora, scegli un modello più piccolo.");
+    case "network": return t("Connessione interrotta durante il download. Il download riprende da dove era arrivato: controlla la rete (meglio il Wi‑Fi) e riprova.");
+    case "storage": return t("Non c'è abbastanza spazio sul telefono per salvare il modello. Libera spazio o elimina i modelli che non usi, poi riprova.");
+    default: return t("Non sono riuscito a caricare il modello ({detail}). Se il telefono ha poca memoria, prova un modello più piccolo.", { detail: String(e?.message || e).slice(0, 160) });
+  }
+}
+// Dati tecnici utili per una segnalazione (nessun dato personale)
+export async function localDiag(model: string): Promise<string> {
+  const s = await localSupport();
+  return `Model: ${model}\nWebGPU: ${s.webgpu ? "yes" : "no"}, shader-f16: ${s.f16 ? "yes" : "no"}, memory: ${s.memGB ?? "unknown"} GB\nBrowser: ${typeof navigator !== "undefined" ? navigator.userAgent : ""}`;
+}
+
 let engine: MLCEngine | null = null;
 let engineKey = "";
 let queue: Promise<unknown> = Promise.resolve();
@@ -88,17 +113,24 @@ export async function loadModel(base: string, onProgress?: (p: number, text: str
   try { await navigator.storage?.persist?.(); } catch { /* ignora */ }
   const w = await webllm();
   const cb = (r: { progress: number; text: string }) => onProgress?.(r.progress, r.text);
-  try {
-    if (engine) { await engine.unload(); engine = null; engineKey = ""; }
-    // Contesto fisso di 4096, senza finestra scorrevole.
-    const chatOpts = { sliding_window_size: -1, context_window_size: 4096 };
-    engine = await w.CreateMLCEngine(id, { initProgressCallback: cb }, chatOpts);
-    engineKey = id;
-    return engine;
-  } catch (e: any) {
-    engine = null; engineKey = "";
-    throw new Error(t("Non sono riuscito a caricare il modello ({detail}). Se il telefono ha poca memoria, prova un modello più piccolo.", { detail: String(e?.message || e).slice(0, 160) }));
+  let last: any = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      if (engine) { await engine.unload(); engine = null; engineKey = ""; }
+      // Contesto fisso di 4096, senza finestra scorrevole.
+      const chatOpts = { sliding_window_size: -1, context_window_size: 4096 };
+      engine = await w.CreateMLCEngine(id, { initProgressCallback: cb }, chatOpts);
+      engineKey = id;
+      return engine;
+    } catch (e: any) {
+      engine = null; engineKey = ""; last = e;
+      // Se cade la rete, riprovo da solo: i pezzi già scaricati restano salvati e il download riprende da lì
+      if (classifyLocalError(e) !== "network" || attempt === 3) break;
+      onProgress?.(0, t("Connessione interrotta, riprovo ({n} di 3)...", { n: attempt + 1 }));
+      await new Promise((r) => setTimeout(r, 2000 * attempt));
+    }
   }
+  throw new Error(explainLocalError(last));
 }
 
 export async function removeModel(base: string): Promise<void> {
@@ -122,10 +154,17 @@ export function localChat(base: string, system: string, messages: LocalMsg[], ma
     const msgs = messages.map((m) => ({ ...m }));
     // Qwen3 ragiona "ad alta voce" di default: lo spengo per avere subito la risposta
     if (/^Qwen3/i.test(base) && msgs.length && msgs[msgs.length - 1].role === "user") msgs[msgs.length - 1].content += " /no_think";
-    const r = await eng.chat.completions.create({
-      messages: [{ role: "system", content: system }, ...msgs] as any,
-      max_tokens: Math.min(maxTokens, 400), temperature, stream: false,
-    });
+    let r;
+    try {
+      r = await eng.chat.completions.create({
+        messages: [{ role: "system", content: system }, ...msgs] as any,
+        max_tokens: Math.min(maxTokens, 400), temperature, stream: false,
+      });
+    } catch (e: any) {
+      const k = classifyLocalError(e);
+      if (k === "device" || k === "memory") { engine = null; engineKey = ""; } // al prossimo tentativo si ricarica
+      throw new Error(explainLocalError(e));
+    }
     const text = stripThink(r.choices?.[0]?.message?.content || "");
     if (!text) throw new Error(t("Il modello sul dispositivo ha restituito una risposta vuota. Riprova."));
     return text;

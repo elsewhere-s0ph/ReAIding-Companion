@@ -54,7 +54,19 @@ export function signOut() {
 export type RemoteFile = { id: string; name: string; modifiedTime: string };
 
 async function call(token: string, url: string, init: RequestInit = {}): Promise<Response> {
-  const r = await fetch(url, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${token}` } });
+  // Fino a 3 tentativi se la rete cade o Google risponde "riprova più tardi" (429, 5xx)
+  let r!: Response;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      r = await fetch(url, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${token}` } });
+    } catch {
+      if (attempt === 3) throw new Error(t("Connessione assente o instabile: la sincronizzazione si è interrotta. Riprova tra poco, i dati già sincronizzati restano al sicuro."));
+      await new Promise((res) => setTimeout(res, 1000 * attempt));
+      continue;
+    }
+    if ((r.status === 429 || r.status >= 500) && attempt < 3) { await new Promise((res) => setTimeout(res, 1000 * attempt)); continue; }
+    break;
+  }
   if (r.status === 401) { cached = null; throw new Error(t("L'accesso a Google è scaduto: riprova.")); }
   if (r.status === 403) throw new Error(t("Google ha negato l'accesso a Drive. Controlla che l'API Google Drive sia attiva nel progetto e che il tuo account sia tra gli utenti di test."));
   if (!r.ok) throw new Error(t("Google Drive ha risposto con un errore ({n}).", { n: r.status }));

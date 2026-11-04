@@ -12,7 +12,7 @@ async function load(onStatus?: (s: string) => void) {
   env.allowLocalModels = false;
   extractor = await pipeline("feature-extraction", MODEL, {
     progress_callback: (p: any) => {
-      if (p.status === "progress") onStatus?.(`Scarico il modello: ${Math.round(p.progress || 0)}%`);
+      if (p.status === "progress") onStatus?.(t("Scarico il modello: {p}%", { p: Math.round(p.progress || 0) }));
     },
   });
   return extractor;

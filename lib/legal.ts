@@ -6,3 +6,5 @@ export const PUBLISHER = "s0ph";
 // Email per le richieste sulla privacy. Se vuota, si rimanda alla pagina Issues del progetto su GitHub.
 export const CONTACT_EMAIL = "flynnsarcadeproject@gmail.com";
 export const ISSUES_URL = "https://github.com/elsewhere-s0ph/ReAIding-Companion/issues";
+// Apre una nuova segnalazione su GitHub con il testo già compilato (si può leggere e modificare prima di inviare)
+export const issueUrl = (title: string, body: string) => `${ISSUES_URL}/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
