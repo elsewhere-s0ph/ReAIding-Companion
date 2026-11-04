@@ -2,11 +2,12 @@ import { get, set } from "idb-keyval";
 import { getWork, listBooks, saveWork, setProgress, type Work } from "./library";
 import { loadChat, saveChat, type Msg } from "./chat";
 import { loadMem, saveMem, type MemStore } from "./memory";
+import { loadBm, mergeBm, saveBm, type Bookmark } from "./bookmarks";
 import { t } from "@/lib/i18n";
 
 // Formato file: un unico .json con libri, progressi, conversazioni e memoria narrativa.
 // L'indice "ricerca avanzata" NON è incluso (è pesante e si rigenera da solo).
-type BackupBook = { work: Work; chat: Msg[]; mem?: MemStore };
+type BackupBook = { work: Work; chat: Msg[]; mem?: MemStore; bm?: Bookmark[] };
 type BackupHead = { app: "ai-reading-companion"; version: 1; exportedAt: number; count: number };
 
 export function backupName() {
@@ -21,7 +22,7 @@ export async function makeBackup(ids: string[]): Promise<Blob> {
   const head: BackupHead = { app: "ai-reading-companion", version: 1, exportedAt: Date.now(), count: works.length };
   const parts: string[] = [`{"head":${JSON.stringify(head)},"books":[`];
   for (let i = 0; i < works.length; i++) {
-    const book: BackupBook = { work: works[i], chat: await loadChat(works[i].id), mem: await loadMem(works[i].id) };
+    const book: BackupBook = { work: works[i], chat: await loadChat(works[i].id), mem: await loadMem(works[i].id), bm: await loadBm(works[i].id) };
     parts.push((i ? "," : "") + JSON.stringify(book)); // un libro alla volta: meno memoria
   }
   parts.push("]}");
@@ -57,11 +58,13 @@ export async function importBackup(file: File): Promise<ImportResult> {
       const extra = (Array.isArray(b.chat) ? b.chat : []).filter((m) => m && !seen.has(`${m.ts}|${m.role}`));
       if (extra.length) await saveChat(w.id, [...mine, ...extra].sort((a, z) => a.ts - z.ts));
       if (b.mem && typeof b.mem === "object") await saveMem(w.id, { ...b.mem, ...(await loadMem(w.id)) });
+      if (Array.isArray(b.bm) && b.bm.length) await saveBm(w.id, mergeBm(await loadBm(w.id), b.bm));
       res.updated++;
     } else {
       await saveWork(w);
       if (Array.isArray(b.chat) && b.chat.length) await saveChat(w.id, b.chat);
       if (b.mem && typeof b.mem === "object" && Object.keys(b.mem).length) await saveMem(w.id, b.mem);
+      if (Array.isArray(b.bm) && b.bm.length) await saveBm(w.id, mergeBm([], b.bm));
       res.added++;
     }
   }

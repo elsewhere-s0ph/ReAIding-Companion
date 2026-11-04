@@ -106,5 +106,6 @@ export async function removeWork(id: string, track = true) {
   await del(`emb_${id}`);
   await del(`chat_${id}`);
   await del(`mem_${id}`);
+  await del(`bm_${id}`);
 }
 export async function clearAll() { await del(OLD); await del(META); await del(PROG); await del(MAXK); await del(LAST); await del(DEL); }
