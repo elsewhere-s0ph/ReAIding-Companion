@@ -51,7 +51,7 @@ function PrivacyIt() {
 
         <section className="card">
           <h2 className="text-lg font-bold">Sito e servizi tecnici</h2>
-          <p className="mt-2">Il sito è ospitato su GitHub Pages: come ogni sito, GitHub può registrare dati tecnici di connessione (come l'indirizzo IP) secondo la propria informativa. L'app non usa cookie di tracciamento. Lo script di accesso di Google viene caricato solo quando usi la sincronizzazione.</p>
+          <p className="mt-2">Il sito è ospitato su GitHub Pages: come ogni sito, GitHub può registrare dati tecnici di connessione (come l'indirizzo IP) secondo la propria informativa. L'app non usa cookie di tracciamento. Lo script di accesso di Google viene caricato solo quando usi la sincronizzazione. Se usi "Segnala un problema", si apre GitHub con un testo (a volte precompilato con dati tecnici come modello e browser) che puoi leggere e modificare prima di inviarlo: l'app non invia nulla da sola.</p>
         </section>
 
         <section className="card">
@@ -117,7 +117,7 @@ function PrivacyEn() {
 
         <section className="card">
           <h2 className="text-lg font-bold">Site and technical services</h2>
-          <p className="mt-2">The site is hosted on GitHub Pages: like any site, GitHub may record technical connection data (such as the IP address) according to its own notice. The app does not use tracking cookies. Google's sign-in script is loaded only when you use syncing.</p>
+          <p className="mt-2">The site is hosted on GitHub Pages: like any site, GitHub may record technical connection data (such as the IP address) according to its own notice. The app does not use tracking cookies. Google's sign-in script is loaded only when you use syncing. If you use "Report a problem", GitHub opens with a text (sometimes prefilled with technical data such as model and browser) that you can read and edit before sending: the app sends nothing by itself.</p>
         </section>
 
         <section className="card">
