@@ -336,4 +336,6 @@ export const EN: Record<string, string> = {
   "Compatta": "Compact",
   "Normale": "Normal",
   "Ampia": "Wide",
+  "È disponibile una nuova versione dell'app.": "A new version of the app is available.",
+  "Aggiorna": "Update",
 };
