@@ -1,16 +1,33 @@
 // Service worker di reAIding companion: permette l'uso offline di lettore e libreria.
 // Non tocca mai le chiamate al Worker, ai modelli o a siti esterni.
-const CACHE = "rc-v16";
+const CACHE = "rc-v17";
 const SCOPE = self.registration.scope; // finisce con "/"
 const SHELL = ["", "libreria/", "lettore/", "chat/", "memoria/", "backup/", "impostazioni/", "privacy/", "condizioni/", "aiuto/", "domande/", "aggiungi-file/", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"]
   .map((p) => new URL(p, SCOPE).href);
 
+// Installazione: salva le pagine e anche i file di codice che usano, così l'app funziona offline subito.
+// NON si attiva da sola: aspetta che l'utente tocchi "Aggiorna" (messaggio SKIP_WAITING), per non rompere una pagina aperta.
+const ASSET_RE = /_next\/static\/[A-Za-z0-9_\-\/.]+\.(?:js|css|woff2?)/g;
 self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE)
-      .then((c) => Promise.all(SHELL.map((u) => c.add(u).catch(() => {}))))
-      .then(() => self.skipWaiting())
-  );
+  e.waitUntil((async () => {
+    const c = await caches.open(CACHE);
+    const assets = new Set();
+    await Promise.all(SHELL.map(async (u) => {
+      try {
+        const r = await fetch(u, { cache: "reload" });
+        if (!r.ok) return;
+        await c.put(u, r.clone());
+        if ((r.headers.get("content-type") || "").includes("text/html")) {
+          for (const m of (await r.text()).match(ASSET_RE) || []) assets.add(new URL(m, SCOPE).href);
+        }
+      } catch { /* ignora */ }
+    }));
+    await Promise.all([...assets].map((u) => c.add(u).catch(() => {})));
+  })());
+});
+
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {
